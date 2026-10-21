@@ -1,6 +1,6 @@
 const crypto = require('crypto');
 const config = require('../config');
-const EmailCode = require('../models/Emailcode');
+const EmailCode = require('../models/EmailCode');
 const { sendMail } = require('./mailer');
 const { renderOtpEmail } = require('../utils/emailTemplate');
 
