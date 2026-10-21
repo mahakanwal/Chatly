@@ -19,6 +19,15 @@ if (otpProvider === 'whatsapp') {
   required.push('WHATSAPP_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID', 'WHATSAPP_TEMPLATE_NAME');
 }
 
+// E-mail (account verification + password reset codes)
+//   log    = free testing: the e-mail is printed in the server logs (no real e-mail sent)
+//   resend = Resend HTTP API   (needs RESEND_API_KEY + MAIL_FROM)
+//   brevo  = Brevo HTTP API    (needs BREVO_API_KEY + MAIL_FROM)
+// HTTP APIs are used on purpose: Render's free plan blocks SMTP ports (25/465/587).
+const mailProvider = (process.env.MAIL_PROVIDER || 'log').toLowerCase();
+if (mailProvider === 'resend') required.push('RESEND_API_KEY', 'MAIL_FROM');
+if (mailProvider === 'brevo') required.push('BREVO_API_KEY', 'MAIL_FROM');
+
 // Backwards compatible with the earlier OPENAI_* variable names
 process.env.AI_API_KEY = process.env.AI_API_KEY || process.env.OPENAI_API_KEY;
 
@@ -41,6 +50,13 @@ module.exports = {
     accountSid: process.env.TWILIO_ACCOUNT_SID,
     authToken: process.env.TWILIO_AUTH_TOKEN,
     verifyServiceSid: process.env.TWILIO_VERIFY_SERVICE_SID,
+  },
+  mail: {
+    provider: mailProvider,
+    from: process.env.MAIL_FROM || '',
+    fromName: process.env.MAIL_FROM_NAME || process.env.APP_NAME || 'Chatly',
+    resendKey: process.env.RESEND_API_KEY,
+    brevoKey: process.env.BREVO_API_KEY,
   },
   whatsapp: {
     token: process.env.WHATSAPP_TOKEN,

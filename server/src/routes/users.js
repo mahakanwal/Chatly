@@ -6,6 +6,7 @@ const Message = require('../models/Message');
 const Report = require('../models/Report');
 const { disconnectUser } = require('../realtime');
 const { toE164, countryOf } = require('../utils/phone');
+const { normalizeUsername, usernameError } = require('../utils/accounts');
 const { singleFile } = require('../middleware/upload');
 const { uploadBuffer, destroy } = require('../services/storage');
 const { broadcastPresence } = require('../services/presence');
@@ -17,9 +18,33 @@ const BOOL_SETTINGS = ['hideLastSeen', 'readReceipts', 'notifyMessages', 'notify
 // GET /api/users/me
 router.get('/me', (req, res) => res.json({ user: req.user.toSelf() }));
 
-// PATCH /api/users/me { name?, about?, hideLastSeen?, readReceipts?, notifyMessages?, notifyGroups?, notifyMoments? }
+// PATCH /api/users/me { name?, about?, username?, phone? (optional, NOT verified), hideLastSeen?, readReceipts?, notifyMessages?, notifyGroups?, notifyMoments? }
 router.patch('/me', async (req, res) => {
-  const { name, about } = req.body;
+  const { name, about, username, phone } = req.body;
+  if (username !== undefined) {
+    const next = normalizeUsername(username);
+    if (next !== req.user.username) {
+      const problem = usernameError(next);
+      if (problem) return res.status(400).json({ message: problem });
+      if (await User.exists({ username: next, _id: { $ne: req.user._id } })) {
+        return res.status(409).json({ message: 'This username is taken' });
+      }
+      req.user.username = next;
+    }
+  }
+  if (phone !== undefined) {
+    const raw = String(phone).trim();
+    if (!raw) {
+      req.user.phone = undefined; // remove my number
+    } else {
+      const e164 = toE164(raw, countryOf(req.user.phone) || 'PK');
+      if (!e164) return res.status(400).json({ message: 'Enter a valid phone number' });
+      if (await User.exists({ phone: e164, _id: { $ne: req.user._id } })) {
+        return res.status(409).json({ message: 'This number is already used by another account' });
+      }
+      req.user.phone = e164;
+    }
+  }
   if (name !== undefined) {
     const trimmed = String(name).trim();
     if (!trimmed) return res.status(400).json({ message: 'Name cannot be empty' });
@@ -152,6 +177,23 @@ router.post('/sync', async (req, res) => {
   res.json({ users: users.map((u) => u.toPublic()) });
 });
 
+// GET /api/users/search?q=... -> find people by username (starts with) or by a full phone number
+router.get('/search', async (req, res) => {
+  const q = String(req.query.q || '').trim().replace(/^@/, '').slice(0, 30);
+  if (q.length < 2) return res.json({ users: [] });
+  const base = { isBot: false, isDeleted: { $ne: true }, _id: { $ne: req.user._id } };
+
+  let users = [];
+  if (/^[+\d][\d\s\-()]{6,}$/.test(q)) {
+    const phone = toE164(q, countryOf(req.user.phone) || 'PK');
+    if (phone) users = await User.find({ ...base, phone }).limit(5);
+  } else {
+    const safe = q.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    users = await User.find({ ...base, username: new RegExp(`^${safe}`) }).sort({ username: 1 }).limit(20);
+  }
+  res.json({ users: users.map((u) => u.toPublic()) });
+});
+
 // GET /api/users/lookup?phone=...
 router.get('/lookup', async (req, res) => {
   const phone = toE164(String(req.query.phone || ''), countryOf(req.user.phone));
@@ -199,6 +241,9 @@ router.delete('/me', async (req, res) => {
 
   // Free the phone number and remove personal data; other people keep their chat history
   me.phone = undefined;
+  me.email = undefined;
+  me.username = undefined;
+  me.passwordHash = undefined;
   me.name = 'Deleted account';
   me.about = '';
   me.avatar = '';

@@ -2,6 +2,11 @@ const { Schema, model } = require('mongoose');
 
 const userSchema = new Schema(
   {
+    // Account identity: e-mail + unique username. The phone number is optional and NOT verified.
+    email: { type: String, lowercase: true, trim: true, unique: true, sparse: true },
+    username: { type: String, lowercase: true, trim: true, unique: true, sparse: true },
+    passwordHash: { type: String, select: false },
+    emailVerified: { type: Boolean, default: false },
     phone: { type: String, unique: true, sparse: true, index: true },
     name: { type: String, trim: true, maxlength: 50, default: '' },
     about: { type: String, trim: true, maxlength: 140, default: 'Available' },
@@ -32,12 +37,13 @@ const userSchema = new Schema(
 /** Profile other people see. Respects "hide last seen & online". */
 userSchema.methods.toPublic = function toPublic() {
   if (this.isDeleted) {
-    return { _id: this._id, phone: '', name: 'Deleted account', about: '', avatar: '', isBot: false, isDeleted: true, online: false, lastSeen: null };
+    return { _id: this._id, phone: '', username: '', name: 'Deleted account', about: '', avatar: '', isBot: false, isDeleted: true, online: false, lastSeen: null };
   }
   const hidden = !this.isBot && Boolean(this.hideLastSeen);
   return {
     _id: this._id,
-    phone: this.isBot ? '' : this.phone,
+    phone: this.isBot ? '' : this.phone || '',
+    username: this.username || '',
     name: this.name,
     about: this.about,
     avatar: this.avatar,
@@ -52,6 +58,8 @@ userSchema.methods.toPublic = function toPublic() {
 userSchema.methods.toSelf = function toSelf() {
   return {
     ...this.toPublic(),
+    email: this.email || '',
+    emailVerified: Boolean(this.emailVerified),
     online: this.online,
     lastSeen: this.lastSeen,
     wallpaper: this.wallpaper || '',
