@@ -1,6 +1,8 @@
 const router = require('express').Router();
 const mongoose = require('mongoose');
 const Moment = require('../models/Moment');
+const Conversation = require('../models/Conversation');
+const { createAndDispatch } = require('../services/messages');
 const User = require('../models/User');
 const { audienceIds, serializeMoment, MOMENT_TTL_MS } = require('../services/moments');
 const { destroy } = require('../services/storage');
@@ -139,6 +141,8 @@ router.get('/:id/viewers', async (req, res) => {
   if (String(m.user) !== String(req.user._id)) return res.status(403).json({ message: 'Only you can see who viewed your moment' });
   await m.populate('viewers.user');
   const likedSet = new Set((m.likes || []).map(String));
+  // Viewed-by list shows ONLY the heart Like next to a name.
+  // Emoji reactions do not appear here — they go to the chat as a message.
   const viewers = m.viewers
     .filter((v) => v.user)
     .sort((a, b) => b.at - a.at)
@@ -175,12 +179,41 @@ router.post('/:id/react', async (req, res) => {
 
   const reactions = m.reactions || [];
   const mine = reactions.find((r) => String(r.user) === me);
-  if (mine && mine.emoji === emoji) m.reactions = reactions.filter((r) => String(r.user) !== me);
+  const removed = !!(mine && mine.emoji === emoji);
+  if (removed) m.reactions = reactions.filter((r) => String(r.user) !== me);
   else if (mine) mine.emoji = emoji, (mine.at = new Date());
   else reactions.push({ user: req.user._id, emoji, at: new Date() });
   await m.save();
   const out = serializeMomentReactions(m.reactions);
   emitToUser(m.user, 'moment:reacted', { momentId: String(m._id), reactions: out });
+  // WhatsApp split: an emoji reaction IS a chat message to the moment owner
+  // (with the moment attached). Removing a reaction sends nothing.
+  // A heart Like, by contrast, never creates a chat message.
+  if (!removed) {
+    try {
+      const owner = await User.findById(m.user);
+      if (owner && !owner.isDeleted) {
+        const pairKey = Conversation.pairKeyFor(req.user._id, owner._id);
+        let conv = await Conversation.findOne({ pairKey });
+        if (!conv) conv = await Conversation.create({ participants: [req.user._id, owner._id], pairKey, lastMessageAt: new Date(0) });
+        await createAndDispatch({
+          conversation: conv,
+          sender: req.user,
+          recipient: owner,
+          type: 'text',
+          text: emoji,
+          momentRef: {
+            momentId: m._id,
+            type: m.type,
+            text: String(m.text || '').slice(0, 200),
+            thumb: m.type === 'image' ? (m.media?.url || '') : (m.media?.thumbnail || ''),
+          },
+        });
+      }
+    } catch (e) {
+      console.error('Moment reaction chat message failed:', e.message);
+    }
+  }
   res.json({ reactions: out });
 });
 
