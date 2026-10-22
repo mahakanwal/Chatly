@@ -1,0 +1,121 @@
+{
+  "expo": {
+    "name": "Chatly",
+    "slug": "chatly",
+    "scheme": "chatly",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0F1418",
+    "ios": {
+      "bundleIdentifier": "com.hassaan.chatly",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": [
+          "remote-notification",
+          "audio",
+          "remote-notification",
+          "audio"
+        ],
+        "NSMicrophoneUsageDescription": "Allow Chatly to use your microphone for voice messages and calls.",
+        "NSCameraUsageDescription": "Allow Chatly to use your camera for photos, videos and video calls."
+      }
+    },
+    "android": {
+      "package": "com.hassaan.chatly",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0F1418"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_CONTACTS",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.WAKE_LOCK",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_CONTACTS",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
+        "android.permission.WRITE_CONTACTS",
+        "android.permission.BLUETOOTH_CONNECT",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.WAKE_LOCK"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Chatly to access your photos so you can share them in chats and set a profile photo.",
+          "cameraPermission": "Allow Chatly to use your camera so you can take photos and videos to share.",
+          "microphonePermission": "Allow Chatly to use your microphone to record videos with sound."
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow Chatly to use your microphone so you can send voice messages."
+        }
+      ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "Allow Chatly to read your contacts to show which of them are on Chatly."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#E8473F"
+        }
+      ],
+      "expo-video",
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      "expo-image",
+      "expo-status-bar",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0F1418"
+        }
+      ],
+      "expo-font",
+      "expo-asset"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "78b9fb11-8ab4-4b93-b687-b6625b03ff5c"
+      }
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/78b9fb11-8ab4-4b93-b687-b6625b03ff5c"
+    }
+  }
+}
