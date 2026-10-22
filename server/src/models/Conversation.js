@@ -20,6 +20,8 @@ const conversationSchema = new Schema(
     avatar: { type: String, default: '' },
     avatarPublicId: { type: String, default: '' },
     admins: [{ type: Types.ObjectId, ref: 'User' }],
+    // WhatsApp-style group permission: when true, only admins can send messages
+    onlyAdminsCanSend: { type: Boolean, default: false },
     createdBy: { type: Types.ObjectId, ref: 'User', default: null },
   },
   { timestamps: true }

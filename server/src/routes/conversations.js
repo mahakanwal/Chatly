@@ -80,6 +80,19 @@ router.post('/', async (req, res) => {
   await respondWith(conv, req, res);
 });
 
+// POST /api/conversations/:id/favourite -> star / unstar this chat (Favourites filter)
+router.post('/:id/favourite', async (req, res) => {
+  const conv = await loadConversation(req, res);
+  if (!conv) return;
+  const id = String(conv._id);
+  const favs = req.user.favourites || [];
+  const isFav = favs.some((f) => String(f) === id);
+  if (isFav) req.user.favourites = favs.filter((f) => String(f) !== id);
+  else req.user.favourites = [...favs, conv._id];
+  await req.user.save();
+  res.json({ ok: true, isFavourite: !isFav });
+});
+
 // GET /api/conversations/:id
 router.get('/:id', async (req, res) => {
   const conv = await loadConversation(req, res);
@@ -133,6 +146,9 @@ router.post('/:id/messages', async (req, res) => {
 
   // ---------- Group ----------
   if (conv.isGroup) {
+    if (conv.onlyAdminsCanSend && !(conv.admins || []).some((a) => String(a) === String(req.user._id))) {
+      return res.status(403).json({ message: 'Only admins can send messages in this group' });
+    }
     const message = await createGroupMessage({ conversation: conv, sender: req.user, type, text: text.trim(), media, replyTo, clientId });
     return res.status(201).json({ message });
   }

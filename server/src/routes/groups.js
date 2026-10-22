@@ -93,6 +93,21 @@ router.patch('/:id', async (req, res) => {
       await createGroupMessage({ conversation: conv, sender: req.user, system: true, text: `${nameOf(req.user)} changed the group name to "${name}"` });
     }
   }
+  if (req.body.onlyAdminsCanSend !== undefined) {
+    const next = Boolean(req.body.onlyAdminsCanSend);
+    if (next !== Boolean(conv.onlyAdminsCanSend)) {
+      conv.onlyAdminsCanSend = next;
+      await conv.save();
+      await createGroupMessage({
+        conversation: conv,
+        sender: req.user,
+        system: true,
+        text: next
+          ? `${nameOf(req.user)} turned on "Only admins can send messages"`
+          : `${nameOf(req.user)} turned off "Only admins can send messages"`,
+      });
+    }
+  }
   if (req.body.description !== undefined) {
     const description = String(req.body.description).trim().slice(0, 500);
     if (description !== conv.description) {

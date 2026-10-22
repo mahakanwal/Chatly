@@ -51,6 +51,8 @@ function serializeMoment(m, viewerId, isOwner) {
         }
       : null,
     createdAt: m.createdAt,
+    reactions: (m.reactions || []).map((r) => ({ user: String(r.user), emoji: r.emoji, at: r.at })),
+    myReaction: (m.reactions || []).find((r) => String(r.user) === String(viewerId))?.emoji || null,
     expiresAt: m.expiresAt,
     seen: isOwner ? true : viewers.some((v) => String(v.user) === String(viewerId)),
     viewCount: isOwner ? viewers.length : undefined,

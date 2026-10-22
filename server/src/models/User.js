@@ -17,6 +17,8 @@ const userSchema = new Schema(
     lastSeen: { type: Date, default: Date.now },
     pushTokens: { type: [String], default: [] },
     blocked: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    // Chats the user starred for the Favourites filter on the Chats screen
+    favourites: [{ type: Schema.Types.ObjectId, ref: 'Conversation' }],
     isDeleted: { type: Boolean, default: false },
 
     // ---------- Settings ----------

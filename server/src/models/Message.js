@@ -50,6 +50,15 @@ const messageSchema = new Schema(
       type: new Schema({ momentId: Types.ObjectId, type: String, text: String, thumb: String }, { _id: false }),
       default: null,
     },
+    // One reaction per user (tap the same emoji again to remove it, tap another to change it)
+    reactions: [
+      {
+        _id: false,
+        user: { type: Types.ObjectId, ref: 'User' },
+        emoji: { type: String, maxlength: 16 },
+        at: { type: Date, default: Date.now },
+      },
+    ],
     // Id generated on the device for optimistic UI de-duplication
     clientId: { type: String, index: true },
   },

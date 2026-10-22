@@ -49,6 +49,7 @@ function serialize(msg) {
     replyTo: deleted ? null : serializeReply(m.replyTo),
     momentRef: deleted ? null : m.momentRef || null,
     status: m.status,
+    reactions: (m.reactions || []).map((r) => ({ user: String(r.user), emoji: r.emoji, at: r.at })),
     deleted,
     clientId: m.clientId,
     createdAt: m.createdAt,

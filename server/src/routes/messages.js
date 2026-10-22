@@ -48,4 +48,31 @@ router.delete('/:id', async (req, res) => {
   res.json({ ok: true });
 });
 
+const REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '🙏', '👍', '🔥', '😍'];
+const serializeReactions = (list) => (list || []).map((r) => ({ user: String(r.user), emoji: r.emoji, at: r.at }));
+
+// POST /api/messages/:id/react { emoji } -> toggle: same emoji removes, another replaces
+router.post('/:id/react', async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Message not found' });
+  const emoji = String(req.body.emoji || '');
+  if (!REACTION_EMOJIS.includes(emoji)) return res.status(400).json({ message: 'Choose a reaction' });
+  const msg = await Message.findById(req.params.id);
+  if (!msg || msg.deletedForEveryone || msg.type === 'system') return res.status(404).json({ message: 'Message not found' });
+  const conv = await Conversation.findById(msg.conversation).select('participants');
+  const me = String(req.user._id);
+  if (!conv || !conv.participants.some((p) => String(p) === me)) return res.status(404).json({ message: 'Message not found' });
+  if ((msg.deletedFor || []).some((id) => String(id) === me)) return res.status(404).json({ message: 'Message not found' });
+
+  const reactions = msg.reactions || [];
+  const mine = reactions.find((r) => String(r.user) === me);
+  if (mine && mine.emoji === emoji) msg.reactions = reactions.filter((r) => String(r.user) !== me);
+  else if (mine) mine.emoji = emoji, (mine.at = new Date());
+  else msg.reactions = [...reactions, { user: req.user._id, emoji, at: new Date() }];
+  await msg.save();
+
+  const payload = { conversationId: String(msg.conversation), messageId: String(msg._id), reactions: serializeReactions(msg.reactions) };
+  conv.participants.forEach((p) => emitToUser(p, 'message:reacted', payload));
+  res.json({ reactions: payload.reactions });
+});
+
 module.exports = router;

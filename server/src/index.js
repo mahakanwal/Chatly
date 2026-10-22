@@ -29,6 +29,8 @@ app.use('/api/media', requireAuth, require('./routes/media'));
 app.use('/api/calls', requireAuth, require('./routes/calls'));
 app.use('/api/groups', requireAuth, require('./routes/groups').router);
 app.use('/api/moments', requireAuth, require('./routes/moments'));
+app.use('/api/channels', requireAuth, require('./routes/channels'));
+app.use('/api/communities', requireAuth, require('./routes/communities'));
 
 app.use((req, res) => res.status(404).json({ message: 'Not found' }));
 // Express 5 forwards async errors here

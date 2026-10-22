@@ -25,6 +25,15 @@ const momentSchema = new Schema(
       ),
       default: null,
     },
+    // One reaction per viewer (same toggle rule as message reactions)
+    reactions: [
+      {
+        _id: false,
+        user: { type: Types.ObjectId, ref: 'User' },
+        emoji: { type: String, maxlength: 16 },
+        at: { type: Date, default: Date.now },
+      },
+    ],
     viewers: [
       {
         _id: false,

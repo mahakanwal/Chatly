@@ -139,4 +139,30 @@ router.delete('/:id', async (req, res) => {
   res.json({ ok: true });
 });
 
+const MOMENT_REACTION_EMOJIS = ['❤️', '😂', '😮', '😢', '🙏', '👍', '🔥', '😍'];
+const serializeMomentReactions = (list) => (list || []).map((r) => ({ user: String(r.user), emoji: r.emoji, at: r.at }));
+
+// POST /api/moments/:id/react { emoji } -> react to someone else's Moment (Status reaction)
+router.post('/:id/react', async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Moment not found' });
+  const emoji = String(req.body.emoji || '');
+  if (!MOMENT_REACTION_EMOJIS.includes(emoji)) return res.status(400).json({ message: 'Choose a reaction' });
+  const m = await loadMoment(req, res);
+  if (!m) return;
+  const me = String(req.user._id);
+  if (String(m.user) === me) return res.status(400).json({ message: 'You cannot react to your own moment' });
+  const ids = await audienceIds(m.user);
+  if (!ids.includes(me)) return res.status(403).json({ message: 'You cannot view this moment' });
+
+  const reactions = m.reactions || [];
+  const mine = reactions.find((r) => String(r.user) === me);
+  if (mine && mine.emoji === emoji) m.reactions = reactions.filter((r) => String(r.user) !== me);
+  else if (mine) mine.emoji = emoji, (mine.at = new Date());
+  else reactions.push({ user: req.user._id, emoji, at: new Date() });
+  await m.save();
+  const out = serializeMomentReactions(m.reactions);
+  emitToUser(m.user, 'moment:reacted', { momentId: String(m._id), reactions: out });
+  res.json({ reactions: out });
+});
+
 module.exports = router;
