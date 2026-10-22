@@ -6,9 +6,9 @@
 
 const BRAND = {
   name: process.env.APP_NAME || 'Chatly',
-  color: '#0F766E',      // main colour (header + code)
-  colorSoft: '#E6F4F2',  // code box background
-  supportEmail: process.env.SUPPORT_EMAIL || 'support@yourdomain.com', // set SUPPORT_EMAIL in .env
+  color: '#E8473F',      // Chatly theme accent (app/src/theme.js: accent) — header + code + links
+  colorSoft: '#FDECEA',  // soft Chatly-red tint for the code box background
+  supportEmail: process.env.SUPPORT_EMAIL || 'support@chatly.com', // default; override with SUPPORT_EMAIL in .env if needed
   website: '',           // optional, e.g. 'https://yourdomain.com'
 };
 
@@ -57,8 +57,8 @@ function renderOtpEmail({ code, name = '', purpose = 'verify', expiresInMinutes 
     .card { background-color: #1a2125 !important; }
     .txt { color: #e6ebee !important; }
     .muted { color: #9aa7ae !important; }
-    .codebox { background-color: #10312e !important; }
-    .code { color: #5eead4 !important; }
+    .codebox { background-color: #3D1713 !important; }
+    .code { color: #FF9A90 !important; }
     .hr { border-color: #2b353a !important; }
   }
   @media only screen and (max-width: 480px) {
