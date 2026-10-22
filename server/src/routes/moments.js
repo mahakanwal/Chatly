@@ -114,16 +114,35 @@ router.post('/:id/view', async (req, res) => {
   res.json({ ok: true });
 });
 
+// POST /api/moments/:id/like -> toggle a private heart Like (no chat message is created)
+router.post('/:id/like', async (req, res) => {
+  const m = await loadMoment(req, res);
+  if (!m) return;
+  const me = String(req.user._id);
+  if (String(m.user) === me) return res.status(400).json({ message: 'You cannot like your own moment' });
+  const ids = await audienceIds(m.user);
+  if (!ids.includes(me)) return res.status(403).json({ message: 'You cannot view this moment' });
+
+  const likes = (m.likes || []).map(String);
+  const already = likes.includes(me);
+  m.likes = already ? likes.filter((id) => id !== me) : [...likes, req.user._id];
+  await m.save();
+  const out = (m.likes || []).map(String);
+  emitToUser(m.user, 'moment:liked', { momentId: String(m._id), likes: out, likeCount: out.length });
+  res.json({ liked: !already, likes: out, likeCount: out.length });
+});
+
 // GET /api/moments/:id/viewers (owner only)
 router.get('/:id/viewers', async (req, res) => {
   const m = await loadMoment(req, res);
   if (!m) return;
   if (String(m.user) !== String(req.user._id)) return res.status(403).json({ message: 'Only you can see who viewed your moment' });
   await m.populate('viewers.user');
+  const likedSet = new Set((m.likes || []).map(String));
   const viewers = m.viewers
     .filter((v) => v.user)
     .sort((a, b) => b.at - a.at)
-    .map((v) => ({ user: v.user.toPublic(), at: v.at }));
+    .map((v) => ({ user: v.user.toPublic(), at: v.at, liked: likedSet.has(String(v.user._id)) }));
   res.json({ viewers });
 });
 

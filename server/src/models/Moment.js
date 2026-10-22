@@ -25,6 +25,9 @@ const momentSchema = new Schema(
       ),
       default: null,
     },
+    // WhatsApp-style Status Likes: a private heart like, NOT a chat message.
+    // Who liked is shown next to that viewer's name in the owner's viewers list.
+    likes: [{ type: Types.ObjectId, ref: 'User' }],
     // One reaction per viewer (same toggle rule as message reactions)
     reactions: [
       {
