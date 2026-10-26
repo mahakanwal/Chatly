@@ -9,6 +9,15 @@ const REPLY_FIELDS = 'type text sender media deletedForEveryone';
 function previewText(msg) {
   if (!msg) return '';
   if (msg.deletedForEveryone) return 'This message was deleted';
+  if (msg.viewOnce) {
+    switch (msg.type) {
+      case 'image': return 'View once photo';
+      case 'video': return 'View once video';
+      case 'audio': return 'View once voice message';
+      case 'document': return 'View once document';
+      default: return 'View once message';
+    }
+  }
   switch (msg.type) {
     case 'image':
       return msg.text ? `Photo: ${msg.text}` : 'Photo';
@@ -38,14 +47,21 @@ function serializeReply(reply) {
 function serialize(msg) {
   const m = msg.toObject ? msg.toObject() : msg;
   const deleted = Boolean(m.deletedForEveryone);
+  // View Once content is NEVER sent in a list/socket payload — only the
+  // placeholder (type + viewOnce flag). The real content is returned once
+  // by POST /messages/:id/view-once, and only to a recipient who has not
+  // viewed it yet. The sender also only ever sees the placeholder.
+  const hidden = Boolean(m.viewOnce);
   return {
     _id: m._id,
     conversation: m.conversation,
     sender: m.sender,
     recipient: m.recipient,
     type: deleted ? 'text' : m.type,
-    text: deleted ? '' : m.text,
-    media: deleted ? null : m.media,
+    text: deleted || hidden ? '' : m.text,
+    media: deleted || hidden ? null : m.media,
+    viewOnce: Boolean(m.viewOnce),
+    viewedOnceBy: (m.viewedOnceBy || []).map((v) => String(v.user || v)),
     replyTo: deleted ? null : serializeReply(m.replyTo),
     momentRef: deleted ? null : m.momentRef || null,
     status: m.status,
@@ -63,7 +79,7 @@ function serialize(msg) {
  * One-to-one chat: saves a message, updates the conversation, delivers it in
  * real time and sends a push notification when the recipient is offline.
  */
-async function createAndDispatch({ conversation, sender, recipient, type = 'text', text = '', media = null, replyTo = null, momentRef = null, clientId }) {
+async function createAndDispatch({ conversation, sender, recipient, type = 'text', text = '', media = null, replyTo = null, momentRef = null, clientId, viewOnce = false }) {
   const recipientOnline = recipient.isBot || isOnline(recipient._id);
   const now = new Date();
 
@@ -81,6 +97,7 @@ async function createAndDispatch({ conversation, sender, recipient, type = 'text
     replyTo,
     momentRef,
     clientId,
+    viewOnce: Boolean(viewOnce),
     status,
     deliveredAt: status !== 'sent' ? now : undefined,
     seenAt: status === 'seen' ? now : undefined,
@@ -113,7 +130,7 @@ async function createAndDispatch({ conversation, sender, recipient, type = 'text
  * offline members. Status: sent -> delivered (all members got it) -> seen (all read it).
  * system = true for events like "Ali added Sara" (no push, no ticks).
  */
-async function createGroupMessage({ conversation, sender, type = 'text', text = '', media = null, replyTo = null, clientId, system = false }) {
+async function createGroupMessage({ conversation, sender, type = 'text', text = '', media = null, replyTo = null, clientId, system = false, viewOnce = false }) {
   const members = conversation.participants.map((p) => String(p._id || p));
   const others = members.filter((id) => id !== String(sender._id));
   const onlineOthers = others.filter((id) => isOnline(id));
@@ -131,6 +148,7 @@ async function createGroupMessage({ conversation, sender, type = 'text', text = 
     media: system ? null : media,
     replyTo: system ? null : replyTo,
     clientId,
+    viewOnce: system ? false : Boolean(viewOnce),
     status,
     deliveredTo: onlineOthers,
     deliveredAt: status !== 'sent' ? now : undefined,

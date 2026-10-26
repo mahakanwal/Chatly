@@ -31,6 +31,9 @@ app.use('/api/groups', requireAuth, require('./routes/groups').router);
 app.use('/api/moments', requireAuth, require('./routes/moments'));
 app.use('/api/channels', requireAuth, require('./routes/channels'));
 app.use('/api/communities', requireAuth, require('./routes/communities'));
+app.use('/api/invites', requireAuth, require('./routes/invites'));
+// Public landing page for shared invite links (opens the app, or tells people to install it)
+app.get('/join/:code', require('./routes/invites').landing);
 
 app.use((req, res) => res.status(404).json({ message: 'Not found' }));
 // Express 5 forwards async errors here

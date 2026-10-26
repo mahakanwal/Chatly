@@ -14,6 +14,8 @@ const communitySchema = new Schema(
     avatarPublicId: { type: String, default: '' },
     owner: { type: Types.ObjectId, ref: 'User', required: true },
     admins: [{ type: Types.ObjectId, ref: 'User' }],
+    // Shareable join link code (created the first time an admin asks for the link)
+    inviteCode: { type: String, unique: true, sparse: true },
     members: [{ type: Types.ObjectId, ref: 'User' }],
     groups: [{ type: Types.ObjectId, ref: 'Conversation' }],
   },

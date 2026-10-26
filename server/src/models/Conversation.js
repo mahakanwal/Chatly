@@ -20,6 +20,11 @@ const conversationSchema = new Schema(
     avatar: { type: String, default: '' },
     avatarPublicId: { type: String, default: '' },
     admins: [{ type: Types.ObjectId, ref: 'User' }],
+    // Shareable join link code (created the first time an admin asks for the link)
+    inviteCode: { type: String, unique: true, sparse: true },
+    // People who used the invite link must be approved by an admin first (turn off to let them in directly)
+    joinApproval: { type: Boolean, default: true },
+    joinRequests: [{ user: { type: Types.ObjectId, ref: 'User' }, at: { type: Date, default: Date.now }, _id: false }],
     // WhatsApp-style group permission: when true, only admins can send messages
     onlyAdminsCanSend: { type: Boolean, default: false },
     createdBy: { type: Types.ObjectId, ref: 'User', default: null },

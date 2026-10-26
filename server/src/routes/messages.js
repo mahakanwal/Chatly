@@ -75,4 +75,60 @@ router.post('/:id/react', async (req, res) => {
   res.json({ reactions: payload.reactions });
 });
 
+// POST /api/messages/:id/view-once -> reveal a View Once message exactly once.
+// The caller must be a conversation member, must not be the sender, and must
+// not have viewed it before. On success the full content is returned AND the
+// message is immediately hidden for this user (deletedFor), so it can never
+// be fetched again — not by re-opening, not by reloading the chat, not by
+// forwarding (the content is never in a list payload). The sender is told
+// via socket 'message:viewed-once' so their bubble can flip to "Opened".
+router.post('/:id/view-once', async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: 'Message not found' });
+  const msg = await Message.findById(req.params.id);
+  if (!msg || msg.deletedForEveryone || msg.type === 'system' || !msg.viewOnce) {
+    return res.status(404).json({ message: 'Message not found' });
+  }
+  const me = String(req.user._id);
+  const conv = await Conversation.findById(msg.conversation).select('participants isGroup');
+  if (!conv || !conv.participants.some((id) => String(id) === me)) {
+    return res.status(404).json({ message: 'Message not found' });
+  }
+  if (String(msg.sender) === me) {
+    // Sender never sees the content, only whether anyone opened it.
+    return res.json({ viewOnce: true, opened: (msg.viewedOnceBy || []).length > 0, viewedOnceBy: (msg.viewedOnceBy || []).map((v) => String(v.user || v)) });
+  }
+  if ((msg.viewedOnceBy || []).some((v) => String(v.user || v) === me)) {
+    return res.status(410).json({ message: 'This message has already been viewed' });
+  }
+  if ((msg.deletedFor || []).some((id) => String(id) === me)) {
+    return res.status(410).json({ message: 'This message has already been viewed' });
+  }
+  msg.viewedOnceBy = [...(msg.viewedOnceBy || []), { user: req.user._id, at: new Date() }];
+  msg.deletedFor = [...(msg.deletedFor || []), req.user._id];
+  // Mark as seen for this viewer (1:1 ticks / group read receipts).
+  if (!conv.isGroup) msg.seenAt = msg.seenAt || new Date();
+  else if (!(msg.readBy || []).some((r) => String(r.user) === me)) {
+    msg.readBy = [...(msg.readBy || []), { user: req.user._id, at: new Date() }];
+  }
+  await msg.save();
+  emitToUser(msg.sender, 'message:viewed-once', {
+    conversationId: String(msg.conversation),
+    messageId: String(msg._id),
+    viewerId: me,
+  });
+  // Full content, returned only here — never in list/socket payloads.
+  res.json({
+    message: {
+      _id: msg._id,
+      conversation: msg.conversation,
+      sender: msg.sender,
+      type: msg.type,
+      text: msg.text,
+      media: msg.media,
+      viewOnce: true,
+      createdAt: msg.createdAt,
+    },
+  });
+});
+
 module.exports = router;

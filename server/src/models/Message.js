@@ -50,6 +50,17 @@ const messageSchema = new Schema(
       type: new Schema({ momentId: Types.ObjectId, type: String, text: String, thumb: String }, { _id: false }),
       default: null,
     },
+    // View Once: if true, the content is hidden in lists/previews and is only
+    // revealed once per recipient via POST /messages/:id/view-once, after which
+    // that recipient can never see it again (added to deletedFor for them).
+    viewOnce: { type: Boolean, default: false },
+    viewedOnceBy: [
+      {
+        _id: false,
+        user: { type: Types.ObjectId, ref: 'User' },
+        at: { type: Date, default: Date.now },
+      },
+    ],
     // One reaction per user (tap the same emoji again to remove it, tap another to change it)
     reactions: [
       {
